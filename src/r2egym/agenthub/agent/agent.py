@@ -68,8 +68,7 @@ class Agent:
             self.logger = logger
         self.llm_name = args.llm_name
 
-        self.llm_base_url = (
-            # "http://localhost:8000/v1"
+        self.llm_base_url = args.llm_base_url or (
             os.environ.get("LLM_BASE_URL", "http://localhost:8000/v1")
             if ("openai/" in self.llm_name) or ("hosted_vllm" in self.llm_name)
             else None
@@ -332,8 +331,8 @@ class Agent:
             or "sonnet" in self.llm_name
             or "o3" in self.llm_name
             or "o4" in self.llm_name
-            and "qwen" not in self.llm_name
-        )
+            or self.llm_name.startswith("pa/")
+        ) and "qwen" not in self.llm_name
         self.use_fn_calling = use_fn_calling and support_fn_calling
         self.logger.warning(f"Using fn calling: {self.use_fn_calling}")
 
