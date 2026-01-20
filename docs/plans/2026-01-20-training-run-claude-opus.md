@@ -118,121 +118,59 @@ uv run --active python src/r2egym/agenthub/run/edit.py runagent_multiple \
 
 ## 轨迹样例
 
+> **完整版轨迹样例**: 详细的逐步分析请参见 [轨迹样例详解](./2026-01-20-trajectory-examples.md)
+
 ### 成功案例: Pillow 图像比较 Bug 修复
 
-**仓库**: pillow
-**奖励**: 1.0
-**步数**: 10
+**仓库**: pillow | **奖励**: 1.0 | **步数**: 10
 
-**问题描述**:
-```
-Title: AttributeError When Comparing Image with Non-Image Types
+**问题**: `Image.__eq__` 方法与非 Image 类型比较时抛出 `AttributeError`
 
-Description:
-When comparing a `PIL.Image.Image` instance with an object of a different type
-(e.g., `None` or `int`), an `AttributeError` is raised because the other object
-does not have the `mode` attribute.
+**Agent 执行步骤** ([完整详解](./2026-01-20-trajectory-examples.md#成功案例-pillow-图像比较-bug)):
 
-Buggy Code Example:
-from PIL import Image
+| 步骤 | 动作 | 说明 | 详情链接 |
+|------|------|------|----------|
+| 0 | `file_editor:view` | 浏览目录结构 | [Step 0](./2026-01-20-trajectory-examples.md#step-0-浏览目录结构) |
+| 1 | `file_editor:view` | 查看源文件 | [Step 1](./2026-01-20-trajectory-examples.md#step-1-查看源文件) |
+| 2 | `execute_bash:grep` | 搜索关键方法 | [Step 2](./2026-01-20-trajectory-examples.md#step-2-搜索关键方法) |
+| 3 | `file_editor:view` | 定位问题代码 | [Step 3](./2026-01-20-trajectory-examples.md#step-3-定位问题代码) |
+| 4-5 | `file_editor:create` | 创建复现脚本 | [Step 4-5](./2026-01-20-trajectory-examples.md#step-4-5-创建复现脚本) |
+| 6 | `execute_bash` | 确认问题 | [Step 6](./2026-01-20-trajectory-examples.md#step-6-执行复现确认问题) |
+| 7 | `str_replace` | 修改代码 | [Step 7](./2026-01-20-trajectory-examples.md#step-7-修改代码) |
+| 8 | `execute_bash` | 验证修复 | [Step 8](./2026-01-20-trajectory-examples.md#step-8-验证修复) |
+| 9 | `finish:submit` | 提交 | [Step 9](./2026-01-20-trajectory-examples.md#step-9-提交结果) |
 
-def compare_image_with_number():
-    image = Image.new('RGB', (25, 25), '#000')
-    number = 12
-    # This comparison raises an AttributeError
-    result = image == number
-
-Expected Behavior:
-Comparing a PIL.Image.Image instance with an object of a different type should
-safely return `False` without raising an exception.
-```
-
-**Agent 执行步骤**:
-
-| 步骤 | 动作 | 说明 |
-|------|------|------|
-| 1 | `file_editor:view` | 浏览 `/testbed` 目录结构 |
-| 2 | `file_editor:view` | 查看 `PIL/Image.py` 文件 |
-| 3 | `execute_bash:grep` | 搜索 `__eq__` 方法定义 |
-| 4 | `file_editor:view` | 定位 `__eq__` 方法上下文 |
-| 5 | `file_editor:create` | 创建 `reproduce_issue.py` 复现脚本 |
-| 6 | `file_editor:create` | 完善复现脚本 |
-| 7 | `execute_bash:python` | 执行复现脚本确认问题 |
-| 8 | `file_editor:str_replace` | 修改 `__eq__` 方法添加类型检查 |
-| 9 | `execute_bash:python` | 再次执行确认修复 |
-| 10 | `finish:submit` | 提交修复 |
-
-**测试结果**:
-```
-============================= test session starts =============================
-platform linux -- Python 3.9.21
-collected 3 items
-
-PASSED test_1::TestImage::test_comparison_with_other_type
-PASSED test_1::TestImage::test_internals
-PASSED test_1::TestImage::test_sanity
-=================== 3 passed in 0.00s ===================
+**修复代码**:
+```python
+def __eq__(self, other):
+    if not isinstance(other, Image):  # 添加类型检查
+        return False
+    # ... 原有比较逻辑
 ```
 
-**成功原因分析**:
-1. 问题定位清晰: `__eq__` 方法缺少类型检查
-2. 修复方案简单: 添加 `isinstance` 检查
-3. 测试覆盖完整: 单元测试明确验证修复
+**测试结果**: 3 passed
 
 ---
 
 ### 失败案例: aiohttp 异步 Drain 问题
 
-**仓库**: aiohttp
-**奖励**: 0.0
-**步数**: 26
+**仓库**: aiohttp | **奖励**: 0.0 | **步数**: 26
 
-**问题描述**:
-```
-Title: Unable to Create Multiple Waiters on Transport Drain Due to Missing Method
+**问题**: `StreamProtocol` 缺少 `_make_drain_waiter` 方法
 
-Description:
-When attempting to create multiple waiters on the transport drain using the
-`StreamProtocol` class, an `AttributeError` is raised because the
-`_make_drain_waiter` method is missing.
+**关键步骤** ([完整详解](./2026-01-20-trajectory-examples.md#失败案例-aiohttp-异步-drain-问题)):
 
-Example Buggy Code:
-import asyncio
-from aiohttp import parsers
+| 步骤 | 发现 |
+|------|------|
+| Step 3 | 搜索 `_make_drain_waiter` **未找到** |
+| Step 5 | 父类有 `_drain_waiter` 属性但无此方法 |
+| Step 8 | 尝试修改时意外删除代码 |
+| Step 9-26 | 多次尝试但无法通过测试 |
 
-class StreamProtocolTests(unittest.TestCase):
-    def test_create_multiple_drain_waiters(self):
-        proto = parsers.StreamProtocol(loop=asyncio.get_event_loop())
-        proto._paused = True
-        waiter1 = proto._make_drain_waiter()
-        waiter2 = proto._make_drain_waiter()
-
-Expected Behavior:
-The StreamProtocol should support creating multiple drain waiters.
-```
-
-**Agent 执行步骤**:
-
-| 步骤 | 动作 | 说明 |
-|------|------|------|
-| 1-4 | `file_editor:view` | 多次浏览代码寻找相关实现 |
-| 5-6 | `execute_bash` | 尝试理解 asyncio.streams 模块 |
-| 7 | `file_editor:create` | 创建复现脚本 |
-| 8 | `execute_bash` | 执行复现 |
-| 9-20 | 多次尝试 | 反复修改和测试，未找到正确方案 |
-| 21-26 | 继续尝试 | 达到步数上限仍未解决 |
-
-**测试结果**:
-```
-pytest warnings about asyncio_default_fixture_loop_scope...
-Tests did not pass as expected.
-```
-
-**失败原因分析**:
-1. **问题复杂度高**: 涉及异步编程和内部协议实现
-2. **缺少上下文**: `_make_drain_waiter` 方法需要理解整个异步流控制机制
-3. **步数不足**: 26 步仍未能完成调试和修复循环
-4. **测试环境复杂**: pytest-asyncio 配置警告干扰
+**失败原因**: [详细分析](./2026-01-20-trajectory-examples.md#失败原因分析)
+1. 问题复杂度高 (异步编程)
+2. 需要从头实现方法
+3. 步数限制 (40 步不够)
 
 ## 监控命令
 
